@@ -194,3 +194,8 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+# AI coding tools
+.agent/
+.claude/
+.windsurf/
