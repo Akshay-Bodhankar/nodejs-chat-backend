@@ -52,4 +52,191 @@ const messageController = require("./message.controller");
  */
 router.post("/:chatId/message/send", messageController.sendMessage);
 
+/**
+ * @swagger
+ * /chat/{chatId}/messages:
+ *   get:
+ *     summary: Get messages from a chat
+ *     description: Retrieves messages from a chat in chronological order.
+ *     tags:
+ *       - Messages
+ *     parameters:
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID of the chat
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Maximum number of messages to retrieve
+ *     responses:
+ *       200:
+ *         description: Messages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 total:
+ *                   type: integer
+ *                   example: 2
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       messageId:
+ *                         type: string
+ *                         example: firestore-message-id
+ *                       senderId:
+ *                         type: string
+ *                         format: uuid
+ *                       text:
+ *                         type: string
+ *                         example: Hello!
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       editedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       deletedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *       404:
+ *         description: Chat not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/:chatId/messages", messageController.getMessages);
+
+/**
+ * @swagger
+ * /chat/{chatId}/message/{messageId}/read:
+ *   post:
+ *     summary: Mark a message as read
+ *     description: Records a read receipt for a specific user on a message.
+ *     tags:
+ *       - Messages
+ *     parameters:
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID of the chat
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Firestore message document ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID of the user who read the message
+ *             example:
+ *               userId: "550e8400-e29b-41d4-a716-446655440000"
+ *     responses:
+ *       200:
+ *         description: Message marked as read successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: Message marked as read
+ *               data:
+ *                 messageId: "firestore-message-id"
+ *                 userId: "550e8400-e29b-41d4-a716-446655440000"
+ *                 status: READ
+ *       400:
+ *         description: Invalid or missing userId
+ *       403:
+ *         description: User is not a member of this chat
+ *       404:
+ *         description: Chat or message not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/:chatId/message/:messageId/read",
+  messageController.markMessageAsRead
+);
+
+
+
+/**
+ * @swagger
+ * /chat/{chatId}/lastseen:
+ *   post:
+ *     summary: Update user's last seen status
+ *     description: Updates the last message seen and timestamp for a chat member.
+ *     tags:
+ *       - Messages
+ *     parameters:
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Chat ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - messageId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *               messageId:
+ *                 type: string
+ *             example:
+ *               userId: "b3b57c8a-abb3-478b-9e9d-99b6b3c799dc"
+ *               messageId: "firestore-message-id"
+ *     responses:
+ *       200:
+ *         description: Last seen updated successfully
+ *       400:
+ *         description: Invalid request body
+ *       403:
+ *         description: User is not a member of this chat
+ *       404:
+ *         description: Chat or message not found
+ *       500:
+ *         description: Internal server error
+ */
+
+router.post(
+  "/:chatId/lastseen",
+  messageController.updateLastSeen
+);
 module.exports = router;

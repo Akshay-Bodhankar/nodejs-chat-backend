@@ -708,7 +708,9 @@ export const ChatMemberScalarFieldEnum = {
   chatId: 'chatId',
   userId: 'userId',
   role: 'role',
-  joinedAt: 'joinedAt'
+  joinedAt: 'joinedAt',
+  lastSeenMessageId: 'lastSeenMessageId',
+  lastSeenAt: 'lastSeenAt'
 } as const
 
 export type ChatMemberScalarFieldEnum = (typeof ChatMemberScalarFieldEnum)[keyof typeof ChatMemberScalarFieldEnum]
