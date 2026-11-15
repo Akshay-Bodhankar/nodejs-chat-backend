@@ -24,10 +24,10 @@ class MessageRepository {
 
     async createMessage(chatId: string, senderId: string, text: string) {
         const messageRef = firestore.collection("chats")
-                                    .doc(chatId)
-                                    .collection("messages")
-                                    .doc();
-        
+            .doc(chatId)
+            .collection("messages")
+            .doc();
+
         await messageRef.set({
             senderId,
             text,
@@ -50,11 +50,11 @@ class MessageRepository {
 
     async getMessages(chatId: string, limit: number) {
         const snapshot = await firestore.collection("chats")
-                                        .doc(chatId)
-                                        .collection("messages")
-                                        .orderBy("createdAt", "desc")
-                                        .limit(limit)
-                                        .get();
+            .doc(chatId)
+            .collection("messages")
+            .orderBy("createdAt", "desc")
+            .limit(limit)
+            .get();
         return snapshot.docs.map((doc: any) => {
             const data = doc.data();
 
@@ -71,23 +71,23 @@ class MessageRepository {
 
     async markMessageAsRead(chatId: string, messageId: string, userId: string) {
         const messageRef = firestore.collection("chats")
-                                    .doc(chatId)
-                                    .collection("messages")
-                                    .doc(messageId);
+            .doc(chatId)
+            .collection("messages")
+            .doc(messageId);
 
         const messageSnapshot = await messageRef.get();
 
-        if(!messageSnapshot.exists) {
+        if (!messageSnapshot.exists) {
             throw new Error("MESSAGE_NOT_FOUND");
         }
 
         await messageRef.collection("readReceipts")
-                        .doc(userId)
-                        .set({
-                            userId,
-                            readAt: admin.firestore.FieldValue.serverTimestamp(),
-                        });
-        
+            .doc(userId)
+            .set({
+                userId,
+                readAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
         return {
             messageId,
             userId,
@@ -98,7 +98,7 @@ class MessageRepository {
     async updateLastSeen(chatId: string, userId: string, messageId: string) {
         return await prisma.chatMember.update({
             where: {
-                chatId_userId : {
+                chatId_userId: {
                     chatId,
                     userId
                 }
@@ -116,14 +116,14 @@ class MessageRepository {
         })
     }
 
-    async findMessage(chatId: string, messageId: string){
+    async findMessage(chatId: string, messageId: string) {
         const messageRef = firestore.collection("chats")
-                                    .doc(chatId)
-                                    .collection("messages")
-                                    .doc(messageId)
+            .doc(chatId)
+            .collection("messages")
+            .doc(messageId)
         const snapshot = await messageRef.get();
 
-        if(!snapshot.exists) {
+        if (!snapshot.exists) {
             return null;
         }
 
@@ -131,6 +131,61 @@ class MessageRepository {
             messageId: snapshot.id,
             ...snapshot.data()
         }
+    }
+
+    async editMessage(
+        chatId: string,
+        messageId: string,
+        text: string
+    ) {
+        const messageRef = firestore
+            .collection("chats")
+            .doc(chatId)
+            .collection("messages")
+            .doc(messageId);
+
+        await messageRef.update({
+            text,
+            editedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const snapshot = await messageRef.get();
+        const data = snapshot.data();
+
+        return {
+            messageId: snapshot.id,
+            senderId: data.senderId,
+            text: data.text,
+            createdAt: data.createdAt?.toDate() ?? null,
+            editedAt: data.editedAt?.toDate() ?? null,
+        };
+    }
+
+    async deleteMessage(
+        chatId: string,
+        messageId: string
+    ) {
+        const messageRef = firestore
+            .collection("chats")
+            .doc(chatId)
+            .collection("messages")
+            .doc(messageId);
+
+        await messageRef.update({
+            text: "This message was deleted",
+            deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const snapshot = await messageRef.get();
+        const data = snapshot.data();
+
+        return {
+            messageId: snapshot.id,
+            senderId: data.senderId,
+            text: data.text,
+            createdAt: data.createdAt?.toDate() ?? null,
+            deletedAt: data.deletedAt?.toDate() ?? null,
+        };
     }
 }
 

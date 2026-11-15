@@ -239,4 +239,112 @@ router.post(
   "/:chatId/lastseen",
   messageController.updateLastSeen
 );
+
+/**
+ * @swagger
+ * /chat/{chatId}/message/{messageId}/edit:
+ *   put:
+ *     summary: Edit an existing message
+ *     description: Only the original sender can edit their message.
+ *     tags:
+ *       - Messages
+ *     parameters:
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - senderId
+ *               - text
+ *             properties:
+ *               senderId:
+ *                 type: string
+ *                 format: uuid
+ *               text:
+ *                 type: string
+ *                 maxLength: 5000
+ *           example:
+ *             senderId: "b3b57c8a-abb3-478b-9e9d-99b6b3c799dc"
+ *             text: "This is my corrected message"
+ *     responses:
+ *       200:
+ *         description: Message updated successfully
+ *       400:
+ *         description: Invalid input or message already deleted
+ *       403:
+ *         description: User is not the original sender
+ *       404:
+ *         description: Chat or message not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/:chatId/message/:messageId/edit",
+  messageController.editMessage
+);
+
+/**
+ * @swagger
+ * /chat/{chatId}/message/{messageId}/delete:
+ *   delete:
+ *     summary: Delete a message
+ *     description: Only the original sender can delete their message. Uses soft deletion.
+ *     tags:
+ *       - Messages
+ *     parameters:
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - senderId
+ *             properties:
+ *               senderId:
+ *                 type: string
+ *                 format: uuid
+ *           example:
+ *             senderId: "b3b57c8a-abb3-478b-9e9d-99b6b3c799dc"
+ *     responses:
+ *       200:
+ *         description: Message deleted successfully
+ *       400:
+ *         description: Invalid request or message already deleted
+ *       403:
+ *         description: Only the original sender can delete the message
+ *       404:
+ *         description: Chat or message not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete(
+  "/:chatId/message/:messageId/delete",
+  messageController.deleteMessage
+);
+
 module.exports = router;

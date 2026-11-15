@@ -1,7 +1,7 @@
 const prisma = require("../../config/database");
 
 class ChatRepository {
-    async findUserByIds(userIds: string[]){
+    async findUserByIds(userIds: string[]) {
         return await prisma.user.findMany({
             where: {
                 id: {
@@ -136,6 +136,111 @@ class ChatRepository {
                 }
             }
         })
+    }
+
+    //bonus Task
+    async createGroupChat(
+        name: string,
+        creatorId: string,
+        memberIds: string[]
+    ) {
+        return await prisma.chat.create({
+            data: {
+                type: "GROUP",
+                name,
+                members: {
+                    create: memberIds.map((userId) => ({
+                        userId,
+                        role: userId === creatorId ? "ADMIN" : "MEMBER",
+                    })),
+                },
+            },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    //bonus Task
+    async findChatWithMembers(chatId: string) {
+        return await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: {
+                members: true,
+            },
+        });
+    }
+
+    //bonus Task
+    async addGroupMembers(
+        chatId: string,
+        memberIds: string[]
+    ) {
+        await prisma.chatMember.createMany({
+            data: memberIds.map((userId) => ({
+                chatId,
+                userId,
+                role: "MEMBER",
+            })),
+            skipDuplicates: true,
+        });
+
+        return await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async removeGroupMember(chatId: string, userId: string) {
+        return await prisma.chatMember.delete({
+            where: {
+                chatId_userId: {
+                    chatId,
+                    userId,
+                },
+            },
+        });
+    }
+
+    async findGroupWithMembers(chatId: string) {
+        return await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
     }
 }
 

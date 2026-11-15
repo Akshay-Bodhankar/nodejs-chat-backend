@@ -193,6 +193,120 @@ class MessageController {
             });
         }
     }
+
+    async editMessage(req: any, res: any) {
+        try {
+            const schema = z.object({
+                senderId: z.string().uuid(),
+                text: z.string().trim().min(1).max(5000),
+            });
+
+            const validation = schema.safeParse(req.body);
+
+            if (!validation.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid request body",
+                    errors: validation.error.flatten(),
+                });
+            }
+
+            const { senderId, text } = validation.data;
+            const { chatId, messageId } = req.params;
+
+            const result = await messageService.editMessage(
+                chatId,
+                messageId,
+                senderId,
+                text
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Message updated successfully",
+                data: result,
+            });
+
+        } catch (error: any) {
+            const errors: Record<string, number> = {
+                CHAT_NOT_FOUND: 404,
+                MESSAGE_NOT_FOUND: 404,
+                USER_NOT_CHAT_MEMBER: 403,
+                NOT_MESSAGE_OWNER: 403,
+                MESSAGE_ALREADY_DELETED: 400,
+            };
+
+            if (errors[error.message]) {
+                return res.status(errors[error.message]).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+
+            console.error("Edit message error:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: "Failed to edit message",
+            });
+        }
+    }
+
+    async deleteMessage(req: any, res: any) {
+        try {
+            const schema = z.object({
+                senderId: z.string().uuid(),
+            });
+
+            const validation = schema.safeParse(req.body);
+
+            if (!validation.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid request body",
+                    errors: validation.error.flatten(),
+                });
+            }
+
+            const { chatId, messageId } = req.params;
+            const { senderId } = validation.data;
+
+            const result = await messageService.deleteMessage(
+                chatId,
+                messageId,
+                senderId
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Message deleted successfully",
+                data: result,
+            });
+
+        } catch (error: any) {
+            const errors: Record<string, number> = {
+                CHAT_NOT_FOUND: 404,
+                MESSAGE_NOT_FOUND: 404,
+                USER_NOT_CHAT_MEMBER: 403,
+                NOT_MESSAGE_OWNER: 403,
+                MESSAGE_ALREADY_DELETED: 400,
+            };
+
+            if (errors[error.message]) {
+                return res.status(errors[error.message]).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+
+            console.error("Delete message error:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: "Failed to delete message",
+            });
+        }
+    }
 }
 
 module.exports = new MessageController();
