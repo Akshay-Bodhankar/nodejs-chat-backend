@@ -42,7 +42,6 @@ A RESTful chat backend built with **Node.js, TypeScript, Express, PostgreSQL, Pr
 | Request validation | Zod |
 | API documentation | Swagger UI / OpenAPI |
 | Security middleware | Helmet, CORS |
-| Containerization | Docker and Docker Compose |
 
 ## Architecture
 
@@ -83,10 +82,10 @@ flowchart LR
     Controller --> Service["Service<br/>Apply business rules"]
     Service --> Repository["Repository<br/>Execute data operation"]
 
-    Repository -->|Relational data| Prisma["Prisma Client"]
+    Repository -->|"Relational data"| Prisma["Prisma Client"]
     Prisma --> PostgreSQL[("PostgreSQL")]
 
-    Repository -->|Chat message data| Firebase["Firebase Admin SDK"]
+    Repository -->|"Chat message data"| Firebase["Firebase Admin SDK"]
     Firebase --> Firestore[("Cloud Firestore")]
 
     PostgreSQL --> Result["Result"]
@@ -100,7 +99,6 @@ flowchart LR
 
 - **PostgreSQL** stores users, chats, chat membership, member roles, and last-seen metadata.
 - **Cloud Firestore** stores chat messages and read-receipt documents.
-- **Docker Compose** runs the API and PostgreSQL locally. Firestore remains a managed Firebase cloud service.
 
 The Firestore collection layout is:
 
@@ -134,10 +132,6 @@ nodejs-chat-backend/
 │   │   └── prisma/
 │   ├── app.ts
 │   └── server.ts
-├── Dockerfile
-├── docker-compose.yml
-├── .dockerignore
-├── .env.example
 ├── package.json
 ├── package-lock.json
 └── tsconfig.json
@@ -145,17 +139,14 @@ nodejs-chat-backend/
 
 ## Requirements
 
-For local development:
+- macOS, Linux, or Windows
 - Node.js 20.x
 - npm
 - PostgreSQL 18 (or a compatible supported PostgreSQL version)
 - A Firebase project with Cloud Firestore enabled
 - A Firebase service-account JSON key
 
-For the Docker setup:
-- Docker Desktop or Docker Engine with the Compose plugin
-
-## Configuration
+## Local setup and execution
 
 ### 1. Clone the repository
 
@@ -172,140 +163,89 @@ Replace `<YOUR_REPOSITORY_URL>` with your Git remote URL.
 npm ci
 ```
 
-### 3. Configure environment variables
+### 3. Create the PostgreSQL database
 
-Create a local `.env` file:
+Make sure the PostgreSQL server is running. Create a database named `chat_backend` if it does not already exist.
 
-```bash
-cp .env.example .env
+Using `psql`, for example:
+
+```sql
+CREATE DATABASE chat_backend;
 ```
 
-For local development, set the PostgreSQL connection string in `.env`:
+If the database already exists, you can continue to the next step.
+
+### 4. Configure environment variables
+
+Create a `.env` file in the project root:
 
 ```env
 PORT=8000
 DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/chat_backend?schema=public"
 ```
 
-Replace the username, password, host, and database name with your local PostgreSQL settings. URL-encode special characters in the password when required.
+Replace `YOUR_PASSWORD` with the password for your local PostgreSQL user. Update the username, host, port, or database name if your local PostgreSQL configuration differs. URL-encode special characters in the password when required.
 
-### 4. Configure Firebase
+Do not commit `.env` to Git.
+
+### 5. Configure Firebase
 
 1. Create or select a Firebase project.
 2. Enable Cloud Firestore.
 3. Generate a service-account key from the Firebase project settings.
-4. Save the downloaded JSON file in the project root as:
+4. Save the downloaded JSON file in the project root with this exact filename:
 
 ```text
 serviceAccountKey.json
 ```
 
-**Never commit this file.** It is excluded by `.gitignore` and `.dockerignore`. Do not paste service-account credentials into source code, README files, or public repositories.
+**Never commit this file.** It contains private credentials. Keep it excluded through `.gitignore`, and do not paste its contents into source code, README files, or public repositories.
 
-## Run locally (without Docker)
+### 6. Apply database migrations
 
-Make sure PostgreSQL is running and the `DATABASE_URL` in `.env` points to the database.
+Run the committed Prisma migrations against your local PostgreSQL database:
 
 ```bash
-npm ci
 npx prisma migrate deploy --config prisma7.config.ts
+```
+
+Generate the Prisma client if needed:
+
+```bash
+npx prisma generate --config prisma7.config.ts
+```
+
+### 7. Start the development server
+
+```bash
 npm run dev
 ```
 
-The development server uses `tsx watch`.
+The development server uses `tsx watch` and listens on port `8000` by default.
 
-### Build and run
+### 8. Build and run the application
+
+To compile the TypeScript application:
 
 ```bash
 npm run build
+```
+
+To run the compiled application:
+
+```bash
 npm start
 ```
 
 The build script generates the Prisma client and compiles TypeScript into `dist/`.
 
-## Run with Docker Compose
+## API documentation
 
-Docker Compose starts PostgreSQL and the API. The API waits for PostgreSQL's health check, applies existing Prisma migrations, and then starts the server. Firebase Firestore remains a managed cloud dependency.
-
-### 1. Prepare configuration
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set a strong local password:
-
-```env
-PORT=8000
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=replace_with_a_strong_local_password
-POSTGRES_DB=chat_backend
-POSTGRES_PORT=5432
-```
-
-Place your Firebase service-account file at the project root:
-
-```text
-serviceAccountKey.json
-```
-
-The Compose file mounts it read-only into the API container.
-
-### 2. Build and start
-
-```bash
-docker compose up --build
-```
-
-Run in the background:
-
-```bash
-docker compose up --build -d
-```
-
-### 3. Check container status and logs
-
-```bash
-docker compose ps
-docker compose logs -f api
-docker compose logs -f postgres
-```
-
-Expected API startup messages include successful PostgreSQL connection, Firebase initialization, and the API listening on port 8000.
-
-### 4. Verify the API
-
-- Health: http://localhost:8000/health
-- Firebase health: http://localhost:8000/health/firebase
-- Swagger UI: http://localhost:8000/api-docs
-
-### 5. Stop the containers
-
-```bash
-docker compose down
-```
-
-To also delete the PostgreSQL data volume (this permanently removes the database data):
-
-```bash
-docker compose down -v
-```
-
-### Docker notes
-
-- Inside Compose, the API connects to PostgreSQL using the hostname `postgres`, not `localhost`.
-- The database data is persisted in the named Docker volume `postgres_data`.
-- The Firebase service-account JSON is mounted read-only and is not copied into the image.
-- The Docker image currently retains the Prisma CLI and development dependencies so the container can apply migrations at startup. A later production-hardening pass can separate migrations into a dedicated one-off job and prune build-time dependencies from the runtime image.
-- The Compose configuration is intended for local development/demo use. Use managed secrets, restricted network exposure, TLS, resource limits, and a hardened deployment setup for production.
-
-## API reference
-
-The interactive and authoritative request/response documentation is available at:
+The interactive API documentation is available through Swagger UI after starting the server:
 
 **http://localhost:8000/api-docs**
 
-Base URL for local execution: `http://localhost:8000`
+Base URL: `http://localhost:8000`
 
 | Method | Endpoint | Purpose |
 |---|---|---|
@@ -374,15 +314,15 @@ Retrieve messages:
 curl "http://localhost:8000/chat/<CHAT_UUID>/messages?limit=50"
 ```
 
-The path IDs and request-body fields are documented in Swagger. Replace the placeholder values with IDs returned by the API.
+Replace the placeholder IDs with IDs returned by the API. Refer to Swagger for the exact request-body fields and response formats.
 
-## Database migrations
+## Database migrations and schema changes
 
 Prisma schema: `prisma/schema.prisma`
 
 Prisma configuration: `prisma7.config.ts`
 
-Apply committed migrations to the configured database:
+Apply committed migrations:
 
 ```bash
 npx prisma migrate deploy --config prisma7.config.ts
@@ -402,12 +342,12 @@ npx prisma generate --config prisma7.config.ts
 
 ## Security and production considerations
 
-This project demonstrates the chat API workflow and database integration. Before exposing it to real users, add or verify:
+Before exposing the application to real users, add or verify:
 
 - Authentication (for example, JWT or an identity provider) and derive the acting user from the authenticated session rather than trusting `senderId`, `requesterId`, or `userId` supplied in request bodies.
 - Authorization checks for every chat and message operation.
 - Rate limiting, request-size limits, input/output logging policy, and operational monitoring.
-- HTTPS/TLS and secret management for database and Firebase credentials.
+- HTTPS/TLS and secure secret management for database and Firebase credentials.
 - Automated unit and integration tests.
 - A production deployment strategy for database backups, migrations, and Firestore security/administration.
 
